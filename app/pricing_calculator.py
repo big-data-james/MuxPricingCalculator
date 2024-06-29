@@ -30,28 +30,28 @@ pricing_tiers = load_pricing_csv()
 
 st.title('Mux Pricing Calculator')
 
-# Set default values to initialize data in variables
-default_encoding_volume = 1000
-default_live_encoding_volume = 1000
-default_storage_volume = 6000
-default_streaming_volume = 20000
-default_baseline_percent = 100
-default_cold_percent = 60
-default_infrequent_percent = 10
-default_hot_percent = 30
-default_720_percent = 100
-default_1080_percent = 0
-default_1440_percent = 0
-default_2160_percent = 0
-
-# Preload session dataframe to get things started
-if 'data' not in st.session_state:
-    st.session_state.data = pd.DataFrame({
+default_values = {
+    'encoding_volume': 1000,
+    'live_encoding_volume': 1000,
+    'storage_volume': 6000,
+    'streaming_volume': 20000,
+    'percent_baseline': 100,
+    'cold_percent': 60,
+    'infrequent_percent': 10,
+    'hot_percent': 30,
+    'resolution_mix_720p': 100,
+    'resolution_mix_1080p': 0,
+    'resolution_mix_1440p': 0,
+    'resolution_mix_2160p': 0,
+    'data': pd.DataFrame({
         'SKU Name': ['baseline_encoding_720p', 'live_encoding_720p', 'baseline_storage_720p', 'streaming_720p'],
-        'Usage Value': [default_encoding_volume, default_live_encoding_volume, default_storage_volume,
-                        default_streaming_volume]
-    }
-    )
+        'Usage Value': [1000, 1000, 6000, 20000]
+    })
+}
+
+for key, value in default_values.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 
 def calculate_spend():
@@ -83,17 +83,17 @@ def calculate_spend():
 
 def calculate_usage(resolution, source_sku, default_volume, default_resolution_mix, baseline_encoding, storage_type):
     if baseline_encoding == True:
-        baseline_multiplier = st.session_state.get("percent_baseline", default_baseline_percent) / 100
+        baseline_multiplier = st.session_state.get("percent_baseline", default_values['percent_baseline']) / 100
     elif baseline_encoding == False:
-        baseline_multiplier = (1 - st.session_state.get("percent_baseline", default_baseline_percent) / 100)
+        baseline_multiplier = (1 - st.session_state.get("percent_baseline", default_values['percent_baseline']) / 100)
     else:
         baseline_multiplier = 1
     if storage_type == 'cold':
-        storage_multiplier = st.session_state.get("cold_percent", default_cold_percent) / 100
+        storage_multiplier = st.session_state.get("cold_percent", default_values['cold_percent']) / 100
     elif storage_type == 'infrequent':
-        storage_multiplier = st.session_state.get("infrequent_percent", default_infrequent_percent) / 100
+        storage_multiplier = st.session_state.get("infrequent_percent", default_values['infrequent_percent']) / 100
     elif storage_type == 'hot':
-        storage_multiplier = st.session_state.get("hot_percent", default_hot_percent) / 100
+        storage_multiplier = st.session_state.get("hot_percent", default_values['hot_percent']) / 100
     else:
         storage_multiplier = 1
     value = st.session_state.get(f"{source_sku}", default_volume) * st.session_state.get(
@@ -105,88 +105,96 @@ def calculate_usage(resolution, source_sku, default_volume, default_resolution_m
 def update_dataframe():
     sku_usage_dict = {
         # VOD Encoding SKUs
-        'baseline_encoding_720p': calculate_usage('720p', 'encoding_volume', default_encoding_volume,
-                                                  default_720_percent, True, None),
-        'baseline_encoding_1080p': calculate_usage('1080p', 'encoding_volume', default_encoding_volume,
-                                                   default_1080_percent, True, None),
-        'smart_encoding_720p': calculate_usage('720p', 'encoding_volume', default_encoding_volume, default_720_percent,
+        'baseline_encoding_720p': calculate_usage('720p', 'encoding_volume', default_values['encoding_volume'],
+                                                  default_values['resolution_mix_720p'], True, None),
+        'baseline_encoding_1080p': calculate_usage('1080p', 'encoding_volume', default_values['encoding_volume'],
+                                                   default_values['resolution_mix_1080p'], True, None),
+        'smart_encoding_720p': calculate_usage('720p', 'encoding_volume', default_values['encoding_volume'],
+                                               default_values['resolution_mix_720p'],
                                                False, None),
-        'smart_encoding_1080p': calculate_usage('1080p', 'encoding_volume', default_encoding_volume,
-                                                default_1080_percent, False, None),
-        'smart_encoding_1440p': calculate_usage('1440p', 'encoding_volume', default_encoding_volume,
-                                                default_1440_percent, False, None),
-        'smart_encoding_2160p': calculate_usage('2160p', 'encoding_volume', default_encoding_volume,
-                                                default_2160_percent, False, None),
+        'smart_encoding_1080p': calculate_usage('1080p', 'encoding_volume', default_values['encoding_volume'],
+                                                default_values['resolution_mix_1080p'], False, None),
+        'smart_encoding_1440p': calculate_usage('1440p', 'encoding_volume', default_values['encoding_volume'],
+                                                default_values['resolution_mix_1440p'], False, None),
+        'smart_encoding_2160p': calculate_usage('2160p', 'encoding_volume', default_values['encoding_volume'],
+                                                default_values['resolution_mix_2160p'], False, None),
         # Live Encoding SKUs
-        'live_encoding_720p': calculate_usage('720p', 'live_encoding_volume', default_live_encoding_volume,
-                                              default_720_percent, None, None),
-        'live_encoding_1080p': calculate_usage('1080p', 'live_encoding_volume', default_live_encoding_volume,
-                                               default_1080_percent, None, None),
-        'live_encoding_1440p': calculate_usage('1440p', 'live_encoding_volume', default_live_encoding_volume,
-                                               default_1440_percent, None, None),
-        'live_encoding_2160p': calculate_usage('2160p', 'live_encoding_volume', default_live_encoding_volume,
-                                               default_2160_percent, None, None),
+        'live_encoding_720p': calculate_usage('720p', 'live_encoding_volume', default_values['live_encoding_volume'],
+                                              default_values['resolution_mix_720p'], None, None),
+        'live_encoding_1080p': calculate_usage('1080p', 'live_encoding_volume', default_values['live_encoding_volume'],
+                                               default_values['resolution_mix_1080p'], None, None),
+        'live_encoding_1440p': calculate_usage('1440p', 'live_encoding_volume', default_values['live_encoding_volume'],
+                                               default_values['resolution_mix_1440p'], None, None),
+        'live_encoding_2160p': calculate_usage('2160p', 'live_encoding_volume', default_values['live_encoding_volume'],
+                                               default_values['resolution_mix_2160p'], None, None),
         # Hot Smart Storage SKUs
-        'smart_storage_720p': calculate_usage('720p', 'storage_volume', default_storage_volume, default_720_percent,
+        'smart_storage_720p': calculate_usage('720p', 'storage_volume', default_values['storage_volume'],
+                                              default_values['resolution_mix_720p'],
                                               False, 'hot'),
-        'smart_storage_1080p': calculate_usage('1080p', 'storage_volume', default_storage_volume, default_1080_percent,
+        'smart_storage_1080p': calculate_usage('1080p', 'storage_volume', default_values['storage_volume'],
+                                               default_values['resolution_mix_1080p'],
                                                False, 'hot'),
-        'smart_storage_1440p': calculate_usage('1440p', 'storage_volume', default_storage_volume, default_1440_percent,
+        'smart_storage_1440p': calculate_usage('1440p', 'storage_volume', default_values['storage_volume'],
+                                               default_values['resolution_mix_1440p'],
                                                False, 'hot'),
-        'smart_storage_2160p': calculate_usage('2160p', 'storage_volume', default_storage_volume, default_2160_percent,
+        'smart_storage_2160p': calculate_usage('2160p', 'storage_volume', default_values['storage_volume'],
+                                               default_values['resolution_mix_2160p'],
                                                False, 'hot'),
         # Cold Smart Storage SKUs
-        'smart_cold_storage_720p': calculate_usage('720p', 'storage_volume', default_storage_volume,
-                                                   default_720_percent, False, 'cold'),
-        'smart_cold_storage_1080p': calculate_usage('1080p', 'storage_volume', default_storage_volume,
-                                                    default_1080_percent,
+        'smart_cold_storage_720p': calculate_usage('720p', 'storage_volume', default_values['storage_volume'],
+                                                   default_values['resolution_mix_720p'], False, 'cold'),
+        'smart_cold_storage_1080p': calculate_usage('1080p', 'storage_volume', default_values['storage_volume'],
+                                                    default_values['resolution_mix_1080p'],
                                                     False, 'cold'),
-        'smart_cold_storage_1440p': calculate_usage('1440p', 'storage_volume', default_storage_volume,
-                                                    default_1440_percent,
+        'smart_cold_storage_1440p': calculate_usage('1440p', 'storage_volume', default_values['storage_volume'],
+                                                    default_values['resolution_mix_1440p'],
                                                     False, 'cold'),
-        'smart_cold_storage_2160p': calculate_usage('2160p', 'storage_volume', default_storage_volume,
-                                                    default_2160_percent,
+        'smart_cold_storage_2160p': calculate_usage('2160p', 'storage_volume', default_values['storage_volume'],
+                                                    default_values['resolution_mix_2160p'],
                                                     False, 'cold'),
         # Infrequent Smart Storage SKUs
-        'smart_infrequent_storage_720p': calculate_usage('720p', 'storage_volume', default_storage_volume,
-                                                         default_720_percent, False, 'infrequent'),
-        'smart_infrequent_storage_1080p': calculate_usage('1080p', 'storage_volume', default_storage_volume,
-                                                          default_1080_percent, False, 'infrequent'),
-        'smart_infrequent_storage_1440p': calculate_usage('1440p', 'storage_volume', default_storage_volume,
-                                                          default_1440_percent, False, 'infrequent'),
-        'smart_infrequent_storage_2160p': calculate_usage('2160p', 'storage_volume', default_storage_volume,
-                                                          default_2160_percent, False, 'infrequent'),
+        'smart_infrequent_storage_720p': calculate_usage('720p', 'storage_volume', default_values['storage_volume'],
+                                                         default_values['resolution_mix_720p'], False, 'infrequent'),
+        'smart_infrequent_storage_1080p': calculate_usage('1080p', 'storage_volume', default_values['storage_volume'],
+                                                          default_values['resolution_mix_1080p'], False, 'infrequent'),
+        'smart_infrequent_storage_1440p': calculate_usage('1440p', 'storage_volume', default_values['storage_volume'],
+                                                          default_values['resolution_mix_1440p'], False, 'infrequent'),
+        'smart_infrequent_storage_2160p': calculate_usage('2160p', 'storage_volume', default_values['storage_volume'],
+                                                          default_values['resolution_mix_2160p'], False, 'infrequent'),
         # Baseline Smart Storage SKUs
-        'baseline_storage_720p': calculate_usage('720p', 'storage_volume', default_storage_volume, default_720_percent,
+        'baseline_storage_720p': calculate_usage('720p', 'storage_volume', default_values['storage_volume'],
+                                                 default_values['resolution_mix_720p'],
                                                  True, 'hot'),
-        'baseline_storage_1080p': calculate_usage('1080p', 'storage_volume', default_storage_volume,
-                                                  default_1080_percent, True, 'hot'),
-        'baseline_infrequent_storage_720p': calculate_usage('720p', 'storage_volume', default_storage_volume,
-                                                            default_720_percent,
+        'baseline_storage_1080p': calculate_usage('1080p', 'storage_volume', default_values['storage_volume'],
+                                                  default_values['resolution_mix_1080p'], True, 'hot'),
+        'baseline_infrequent_storage_720p': calculate_usage('720p', 'storage_volume', default_values['storage_volume'],
+                                                            default_values['resolution_mix_720p'],
                                                             True, 'infrequent'),
-        'baseline_infrequent_storage_1080p': calculate_usage('1080p', 'storage_volume', default_storage_volume,
-                                                             default_1080_percent, True, 'infrequent'),
-        'baseline_cold_storage_720p': calculate_usage('720p', 'storage_volume', default_storage_volume,
-                                                      default_720_percent,
+        'baseline_infrequent_storage_1080p': calculate_usage('1080p', 'storage_volume',
+                                                             default_values['storage_volume'],
+                                                             default_values['resolution_mix_1080p'], True,
+                                                             'infrequent'),
+        'baseline_cold_storage_720p': calculate_usage('720p', 'storage_volume', default_values['storage_volume'],
+                                                      default_values['resolution_mix_720p'],
                                                       True, 'cold'),
-        'baseline_cold_storage_1080p': calculate_usage('1080p', 'storage_volume', default_storage_volume,
-                                                       default_1080_percent, True, 'cold'),
+        'baseline_cold_storage_1080p': calculate_usage('1080p', 'storage_volume', default_values['storage_volume'],
+                                                       default_values['resolution_mix_1080p'], True, 'cold'),
         # Streaming SKUs
-        'streaming_720p': calculate_usage('720p', 'streaming_volume', default_streaming_volume, default_720_percent,
+        'streaming_720p': calculate_usage('720p', 'streaming_volume', default_values['streaming_volume'],
+                                          default_values['resolution_mix_720p'],
                                           None, None),
-        'streaming_1080p': calculate_usage('1080p', 'streaming_volume', default_streaming_volume, default_1080_percent,
+        'streaming_1080p': calculate_usage('1080p', 'streaming_volume', default_values['streaming_volume'],
+                                           default_values['resolution_mix_1080p'],
                                            None, None),
-        'streaming_1440p': calculate_usage('1440p', 'streaming_volume', default_streaming_volume, default_1440_percent,
+        'streaming_1440p': calculate_usage('1440p', 'streaming_volume', default_values['streaming_volume'],
+                                           default_values['resolution_mix_1440p'],
                                            None, None),
-        'streaming_2160p': calculate_usage('2160p', 'streaming_volume', default_streaming_volume, default_2160_percent,
+        'streaming_2160p': calculate_usage('2160p', 'streaming_volume', default_values['streaming_volume'],
+                                           default_values['resolution_mix_2160p'],
                                            None, None)
     }
     usage_df = pd.DataFrame(list(sku_usage_dict.items()), columns=['SKU Name', 'Usage Value'])
     st.session_state.data = usage_df
-
-
-if st.button('Save'):
-    update_dataframe()
 
 
 def format_spend(input_value):
@@ -194,26 +202,58 @@ def format_spend(input_value):
     return formatted_spend
 
 
+# Define functions to update target variables
+def update_usage_volumes():
+    st.session_state['encoding_volume'] = st.session_state['encoding_volume_input']
+    st.session_state['live_encoding_volume'] = st.session_state['live_encoding_volume_input']
+    st.session_state['streaming_volume'] = st.session_state['streaming_volume_input']
+    st.session_state['storage_volume'] = st.session_state['storage_volume_input']
+
+
+def update_encoding_tier():
+    st.session_state['percent_baseline'] = st.session_state['percent_baseline_input']
+
+
+def update_storage_lifecycle():
+    st.session_state['cold_percent'] = st.session_state['cold_percent_input']
+    st.session_state['infrequent_percent'] = st.session_state['infrequent_percent_input']
+    st.session_state['hot_percent'] = st.session_state['hot_percent_input']
+
+
+def update_resolution_mix():
+    st.session_state['resolution_mix_720p'] = st.session_state['resolution_mix_720p_input']
+    st.session_state['resolution_mix_1080p'] = st.session_state['resolution_mix_1080p_input']
+    st.session_state['resolution_mix_1440p'] = st.session_state['resolution_mix_1440p_input']
+    st.session_state['resolution_mix_2160p'] = st.session_state['resolution_mix_2160p_input']
+
+
+def update_input_variables():
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.number_input("Input: Monthly VOD Encoding Minutes", min_value=0,
+                        step=100, value=st.session_state.encoding_volume, key='encoding_volume_input',
+                        on_change=update_usage_volumes)
+    with col2:
+        st.number_input("Input: Monthly Live Encoding Minutes", min_value=0,
+                        step=100,
+                        value=st.session_state.live_encoding_volume, key='live_encoding_volume_input',
+                        on_change=update_usage_volumes)
+    with col3:
+        st.number_input("Input: Monthly Streaming Minutes", min_value=0,
+                        step=1000,
+                        value=st.session_state.streaming_volume, key='streaming_volume_input',
+                        on_change=update_usage_volumes)
+    with col4:
+        st.number_input("Input Monthly Storage Minutes", min_value=0, step=100,
+                        value=st.session_state.storage_volume, key='storage_volume_input',
+                        on_change=update_usage_volumes)
+
+
+# Main App Layout
 def home():
     with st.container(border=True):
         st.header("Volume Inputs")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.session_state.encoding_volume = st.number_input("Input Monthly VOD Encoding Minutes", min_value=0,
-                                                               step=100, value=default_encoding_volume)
-        with col2:
-            st.session_state.live_encoding_volume = st.number_input("Input Monthly Live Encoding Minutes", min_value=0,
-                                                                    step=100,
-                                                                    value=default_live_encoding_volume)
-        with col3:
-            st.session_state.streaming_volume = st.number_input("Input Monthly Delivery Minutes", min_value=0,
-                                                                step=1000,
-                                                                value=default_streaming_volume)
-        with col4:
-            st.session_state.storage_volume = st.number_input("Input Monthly Storage Minutes", min_value=0, step=100,
-                                                              max_value=1000000,
-                                                              value=default_storage_volume)
-    # Using this for testing
+        update_input_variables()
     with st.container(border=True):
         st.header("Total Spend")
         st.session_state.spend_data = calculate_spend()
@@ -255,23 +295,25 @@ def home():
 def advanced():
     with st.container():
         st.header("Asset Encoding Mix")
-        st.session_state.percent_baseline = st.slider("Percent Baseline Encoding", min_value=0, max_value=100,
-                                                      value=default_baseline_percent, step=10,
-                                                      format="%d%%")
-
+        st.slider("Percent Baseline Encoding", min_value=0, max_value=100,
+                  value=st.session_state.percent_baseline, step=10,
+                  format="%d%%", key='percent_baseline_input', on_change=update_encoding_tier)
     with st.container():
         st.header("Cold Storage Mix")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.session_state.cold_percent = st.number_input("Percent Cold", min_value=0, max_value=100, step=10,
-                                                            value=default_cold_percent)
+            st.number_input("Percent Cold", min_value=0, max_value=100, step=10,
+                            value=st.session_state.cold_percent, key='cold_percent_input',
+                            on_change=update_storage_lifecycle)
         with col2:
-            st.session_state.infrequent_percent = st.number_input("Percent Infrequent", min_value=0, max_value=100,
-                                                                  step=10,
-                                                                  value=default_infrequent_percent)
+            st.number_input("Percent Infrequent", min_value=0, max_value=100,
+                            step=10,
+                            value=st.session_state.infrequent_percent, key='infrequent_percent_input',
+                            on_change=update_storage_lifecycle)
         with col3:
-            st.session_state.hot_percent = st.number_input("Percent Hot", min_value=0, max_value=100, step=10,
-                                                           value=default_hot_percent)
+            st.number_input("Percent Hot", min_value=0, max_value=100, step=10,
+                            value=st.session_state.hot_percent, key='hot_percent_input',
+                            on_change=update_storage_lifecycle)
     if st.session_state.get("cold_percent", 60) + st.session_state.get("infrequent_percent", 10) + st.session_state.get(
             "hot_percent", 30) != 100:
         st.markdown(":red[Hot/Cold designations do not add to 100%]")
@@ -280,29 +322,36 @@ def advanced():
         st.header("Resolution Mix")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.session_state.resolution_mix_720p = st.number_input("Percent 720p", min_value=0, max_value=100, step=10,
-                                                                   value=default_720_percent)
+            st.number_input("Percent 720p", min_value=0, max_value=100, step=10,
+                            value=st.session_state.resolution_mix_720p, key='resolution_mix_720p_input',
+                            on_change=update_resolution_mix)
         with col2:
-            st.session_state.resolution_mix_1080p = st.number_input("Percent 1080p", min_value=0, max_value=100,
-                                                                    step=10,
-                                                                    value=default_1080_percent)
+            st.number_input("Percent 1080p", min_value=0, max_value=100,
+                            step=10,
+                            value=st.session_state.resolution_mix_1080p, key='resolution_mix_1080p_input',
+                            on_change=update_resolution_mix)
         with col3:
-            st.session_state.resolution_mix_1440p = st.number_input("Percent 1440p", min_value=0, max_value=100,
-                                                                    step=10,
-                                                                    value=default_1440_percent)
+            st.number_input("Percent 1440p", min_value=0, max_value=100,
+                            step=10,
+                            value=st.session_state.resolution_mix_1440p, key='resolution_mix_1440p_input',
+                            on_change=update_resolution_mix)
         with col4:
-            st.session_state.resolution_mix_2160p = st.number_input("Percent 2160p", min_value=0, max_value=100,
-                                                                    step=10,
-                                                                    value=default_2160_percent)
+            st.number_input("Percent 2160p", min_value=0, max_value=100,
+                            step=10,
+                            value=st.session_state.resolution_mix_2160p, key='resolution_mix_2160p_input',
+                            on_change=update_resolution_mix)
 
     if st.session_state.resolution_mix_720p + st.session_state.resolution_mix_1080p + st.session_state.resolution_mix_1440p + st.session_state.resolution_mix_2160p != 100:
         st.markdown(":red[Resolutions do not add to 100%]")
 
 
 st.sidebar.title("Pages")
-selection = st.sidebar.radio("Go to", ["Home", "Advanced Input"])
+selection = st.sidebar.radio("Go to", ["Spend Calculator", "Advanced Input"])
 
-if selection == "Home":
+if st.button('Update Calculation'):
+    update_dataframe()
+
+if selection == "Spend Calculator":
     home()
 elif selection == "Advanced Input":
     advanced()

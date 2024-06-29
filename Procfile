@@ -1,0 +1,1 @@
+web: gunicorn app.pricing_calculator:flask_app

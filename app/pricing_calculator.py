@@ -293,6 +293,9 @@ def home():
 
 
 def advanced():
+    with st.container(border=True):
+        st.header("Volume Inputs")
+        update_input_variables()
     with st.container():
         st.header("Asset Encoding Mix")
         st.slider("Percent Baseline Encoding", min_value=0, max_value=100,
@@ -344,14 +347,51 @@ def advanced():
     if st.session_state.resolution_mix_720p + st.session_state.resolution_mix_1080p + st.session_state.resolution_mix_1440p + st.session_state.resolution_mix_2160p != 100:
         st.markdown(":red[Resolutions do not add to 100%]")
 
+    with st.container(border=True):
+        st.header("Total Spend")
+        st.session_state.spend_data = calculate_spend()
+        spend_df = st.session_state.spend_data
+        storage_spend = format_spend(
+            st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum())
+        encoding_spend = format_spend(spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum())
+        streaming_spend = format_spend(spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum())
+        total_spend = format_spend(spend_df['total_spend'].sum())
+        st.metric('Total Monthly Spend', total_spend)
+
+    with st.container(border=True):
+        st.header("Monthly Spend by SKU Category")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric('Monthly Streaming Spend', streaming_spend)
+        with col2:
+            st.metric('Monthly Encoding Spend', encoding_spend)
+        with col3:
+            st.metric('Monthly Storage Spend', storage_spend)
+    with st.container(border=True):
+        st.header("Spend Details")
+        st.dataframe(spend_df,
+                     column_config={
+                         'sku_category': 'SKU Category',
+                         'sku': 'SKU Name',
+                         'usage': 'Monthly Usage',
+                         'effective_rate': st.column_config.NumberColumn(
+                             label='Effective Rate',
+                             format="$%.4f"
+                         ),
+                         'total_spend': st.column_config.NumberColumn(
+                             label='Monthly Spend',
+                             format="$%d"
+                         )
+                     })
+
 
 st.sidebar.title("Pages")
-selection = st.sidebar.radio("Go to", ["Spend Calculator", "Advanced Input"])
+selection = st.sidebar.radio("Go to", ["Basic Calculator", "Advanced Input"])
 
 if st.button('Update Calculation'):
     update_dataframe()
 
-if selection == "Spend Calculator":
+if selection == "Basic Calculator":
     home()
 elif selection == "Advanced Input":
     advanced()

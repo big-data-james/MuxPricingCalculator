@@ -1,1 +1,1 @@
-web: streamlit run pricing_calculator.py
+web: streamlit run app/pricing_calculator.py

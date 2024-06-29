@@ -386,12 +386,12 @@ def advanced():
 
 
 st.sidebar.title("Pages")
-selection = st.sidebar.radio("Go to", ["Basic Calculator", "Advanced Input"])
+selection = st.sidebar.radio("Go to", ["Basic Calculator", "Advanced Calculator"])
 
 if st.button('Update Calculation'):
     update_dataframe()
 
 if selection == "Basic Calculator":
     home()
-elif selection == "Advanced Input":
+elif selection == "Advanced Calculator":
     advanced()

@@ -1,1 +1,1 @@
-web: gunicorn app.pricing_calculator:flask_app
+web: streamlit run pricing_calculator.py

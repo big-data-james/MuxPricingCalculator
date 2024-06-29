@@ -281,23 +281,19 @@ def advanced():
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.session_state.resolution_mix_720p = st.number_input("Percent 720p", min_value=0, max_value=100, step=10,
-                                                                   value=st.session_state.get("resolution_mix_720p",
-                                                                                              default_720_percent))
+                                                                   value=default_720_percent)
         with col2:
             st.session_state.resolution_mix_1080p = st.number_input("Percent 1080p", min_value=0, max_value=100,
                                                                     step=10,
-                                                                    value=st.session_state.get("resolution_mix_1080p",
-                                                                                               default_1080_percent))
+                                                                    value=default_1080_percent)
         with col3:
             st.session_state.resolution_mix_1440p = st.number_input("Percent 1440p", min_value=0, max_value=100,
                                                                     step=10,
-                                                                    value=st.session_state.get("resolution_mix_1440p",
-                                                                                               default_1440_percent))
+                                                                    value=default_1440_percent)
         with col4:
             st.session_state.resolution_mix_2160p = st.number_input("Percent 2160p", min_value=0, max_value=100,
                                                                     step=10,
-                                                                    value=st.session_state.get("resolution_mix_2160p",
-                                                                                               default_2160_percent))
+                                                                    value=default_2160_percent)
 
     if st.session_state.resolution_mix_720p + st.session_state.resolution_mix_1080p + st.session_state.resolution_mix_1440p + st.session_state.resolution_mix_2160p != 100:
         st.markdown(":red[Resolutions do not add to 100%]")

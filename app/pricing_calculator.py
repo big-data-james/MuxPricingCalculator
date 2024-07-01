@@ -251,7 +251,6 @@ def update_input_variables():
 
 
 def calculate_totals():
-    st.header("Total Spend with Mux Starter Plan ($5)")
     st.session_state.spend_data = calculate_spend()
     spend_df = st.session_state.spend_data
     storage_spend = st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum()
@@ -267,6 +266,7 @@ def calculate_totals():
 def display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost):
     with st.container(border=True):
+        st.header("Total Spend with Mux Starter Plan ($5)")
         st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
     with st.container(border=True):
         st.header("Monthly Spend by SKU Category")

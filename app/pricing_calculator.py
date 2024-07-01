@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import math
 
 custom_css = """
 <style>
@@ -32,7 +33,7 @@ st.title('Mux Pricing Calculator')
 
 default_values = {
     'encoding_volume': 1000,
-    'live_encoding_volume': 1000,
+    'live_encoding_volume': 500,
     'storage_volume': 6000,
     'streaming_volume': 20000,
     'percent_baseline': 100,
@@ -45,7 +46,7 @@ default_values = {
     'resolution_mix_2160p': 0,
     'data': pd.DataFrame({
         'SKU Name': ['baseline_encoding_720p', 'live_encoding_720p', 'baseline_storage_720p', 'streaming_720p'],
-        'Usage Value': [1000, 1000, 6000, 20000]
+        'Usage Value': [1000, 500, 6000, 20000]
     })
 }
 
@@ -198,7 +199,7 @@ def update_dataframe():
 
 
 def format_spend(input_value):
-    formatted_spend = f"${input_value:,.0f}"
+    formatted_spend = f"${input_value:,.0f}".replace('$-', '-$')
     return formatted_spend
 
 
@@ -255,27 +256,33 @@ def home():
         st.header("Volume Inputs")
         update_input_variables()
     with st.container(border=True):
-        st.header("Total Spend")
+        st.header("Total Spend with Mux Starter Plan ($5)")
         st.session_state.spend_data = calculate_spend()
         spend_df = st.session_state.spend_data
-        storage_spend = format_spend(
-            st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum())
-        encoding_spend = format_spend(spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum())
-        streaming_spend = format_spend(spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum())
-        total_spend = format_spend(spend_df['total_spend'].sum())
-        st.metric('Total Monthly Spend', total_spend)
+        storage_spend = st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum()
+        encoding_spend = spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum()
+        streaming_spend = spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum()
+        total_spend = spend_df['total_spend'].sum() - 100
+        total_spend_developer_plan = max(total_spend, 5)
+        developer_plan_cost = 5
+        mux_credits = max(-100, -1*(storage_spend + encoding_spend + streaming_spend))
+        st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
 
     with st.container(border=True):
         st.header("Monthly Spend by SKU Category")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric('Monthly Streaming Spend', streaming_spend)
+            st.metric('Monthly Streaming Spend', format_spend(streaming_spend))
         with col2:
-            st.metric('Monthly Encoding Spend', encoding_spend)
+            st.metric('Monthly Encoding Spend', format_spend(encoding_spend))
         with col3:
-            st.metric('Monthly Storage Spend', storage_spend)
+            st.metric('Monthly Storage Spend', format_spend(storage_spend))
+        with col4:
+            st.metric('Monthly Starter Plan Cost', format_spend(developer_plan_cost))
+        with col5:
+            st.metric('Mux Credits (inc. w/ Starter Plan)', format_spend(mux_credits))
     with st.container(border=True):
-        st.header("Spend Details")
+        st.header("Spend Details (excludes Starter Plan credits)")
         st.dataframe(spend_df,
                      column_config={
                          'sku_category': 'SKU Category',

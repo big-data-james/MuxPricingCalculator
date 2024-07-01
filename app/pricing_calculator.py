@@ -250,24 +250,24 @@ def update_input_variables():
                         on_change=update_usage_volumes)
 
 
-# Main App Layout
-def home():
-    with st.container(border=True):
-        st.header("Volume Inputs")
-        update_input_variables()
-    with st.container(border=True):
-        st.header("Total Spend with Mux Starter Plan ($5)")
-        st.session_state.spend_data = calculate_spend()
-        spend_df = st.session_state.spend_data
-        storage_spend = st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum()
-        encoding_spend = spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum()
-        streaming_spend = spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum()
-        total_spend = spend_df['total_spend'].sum() - 100
-        total_spend_developer_plan = max(total_spend, 5)
-        developer_plan_cost = 5
-        mux_credits = max(-100, -1*(storage_spend + encoding_spend + streaming_spend))
-        st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
+def calculate_totals():
+    st.header("Total Spend with Mux Starter Plan ($5)")
+    st.session_state.spend_data = calculate_spend()
+    spend_df = st.session_state.spend_data
+    storage_spend = st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum()
+    encoding_spend = spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum()
+    streaming_spend = spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum()
+    total_spend = spend_df['total_spend'].sum() - 100
+    total_spend_developer_plan = max(total_spend, 5)
+    developer_plan_cost = 5
+    mux_credits = max(-100, -1 * (storage_spend + encoding_spend + streaming_spend))
+    return spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost
 
+
+def display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
+                   total_spend_developer_plan, developer_plan_cost):
+    with st.container(border=True):
+        st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
     with st.container(border=True):
         st.header("Monthly Spend by SKU Category")
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -299,7 +299,19 @@ def home():
                      })
 
 
+# Main App Layout
+def home():
+    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals()
+    with st.container(border=True):
+        st.header("Volume Inputs")
+        update_input_variables()
+    display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
+                   total_spend_developer_plan, developer_plan_cost)
+
+
 def advanced():
+    # Bring in calculated variables
+    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals()
     with st.container(border=True):
         st.header("Volume Inputs")
         update_input_variables()
@@ -354,42 +366,9 @@ def advanced():
     if st.session_state.resolution_mix_720p + st.session_state.resolution_mix_1080p + st.session_state.resolution_mix_1440p + st.session_state.resolution_mix_2160p != 100:
         st.markdown(":red[Resolutions do not add to 100%]")
 
-    with st.container(border=True):
-        st.header("Total Spend")
-        st.session_state.spend_data = calculate_spend()
-        spend_df = st.session_state.spend_data
-        storage_spend = format_spend(
-            st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum())
-        encoding_spend = format_spend(spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum())
-        streaming_spend = format_spend(spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum())
-        total_spend = format_spend(spend_df['total_spend'].sum())
-        st.metric('Total Monthly Spend', total_spend)
-
-    with st.container(border=True):
-        st.header("Monthly Spend by SKU Category")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric('Monthly Streaming Spend', streaming_spend)
-        with col2:
-            st.metric('Monthly Encoding Spend', encoding_spend)
-        with col3:
-            st.metric('Monthly Storage Spend', storage_spend)
-    with st.container(border=True):
-        st.header("Spend Details")
-        st.dataframe(spend_df,
-                     column_config={
-                         'sku_category': 'SKU Category',
-                         'sku': 'SKU Name',
-                         'usage': 'Monthly Usage',
-                         'effective_rate': st.column_config.NumberColumn(
-                             label='Effective Rate',
-                             format="$%.4f"
-                         ),
-                         'total_spend': st.column_config.NumberColumn(
-                             label='Monthly Spend',
-                             format="$%d"
-                         )
-                     })
+    # Bring in Totals from main logic above
+    display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
+                   total_spend_developer_plan, developer_plan_cost)
 
 
 st.sidebar.title("Pages")

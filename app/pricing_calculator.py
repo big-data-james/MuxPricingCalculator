@@ -400,7 +400,7 @@ def super_advanced():
     if st.button('Convert to volumes and updated spend calculation'):
         calculate_gb_volumes()
         update_dataframe()
-    st.header("I only know GBs")
+    st.header("Input CDN and Storage GB Volumes")
     spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1:

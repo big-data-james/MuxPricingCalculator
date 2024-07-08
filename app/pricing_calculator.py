@@ -44,6 +44,12 @@ default_values = {
     'resolution_mix_1080p': 0,
     'resolution_mix_1440p': 0,
     'resolution_mix_2160p': 0,
+    'bandwidth_gb': 100,
+    'bandwidth_bitrate': 3.5,
+    'library_size_gb': 100,
+    'new_videos_per_month': 1000,
+    'new_live_videos_per_month': 0,
+    'avg_video_length': 5.0,
     'data': pd.DataFrame({
         'SKU Name': ['baseline_encoding_720p', 'live_encoding_720p', 'baseline_storage_720p', 'streaming_720p'],
         'Usage Value': [1000, 500, 6000, 20000]
@@ -55,9 +61,9 @@ for key, value in default_values.items():
         st.session_state[key] = value
 
 
-def calculate_spend():
+def calculate_spend(df):
     results = []
-    for _, row in st.session_state.data.iterrows():
+    for _, row in df.iterrows():
         filtered_pricing_df = pricing_tiers[
             (pricing_tiers['unique_key'] == row['SKU Name']) &
             (pricing_tiers['start'] <= row['Usage Value']) &
@@ -211,6 +217,15 @@ def update_usage_volumes():
     st.session_state['storage_volume'] = st.session_state['storage_volume_input']
 
 
+def update_gb_volumes():
+    st.session_state['bandwidth_gb'] = st.session_state['bandwidth_gb_input']
+    st.session_state['bandwidth_bitrate'] = st.session_state['bandwidth_bitrate_input']
+    st.session_state['library_size_gb'] = st.session_state['library_size_gb_input']
+    st.session_state['new_videos_per_month'] = st.session_state['new_videos_per_month_input']
+    st.session_state['new_live_videos_per_month'] = st.session_state['new_live_videos_per_month_input']
+    st.session_state['avg_video_length'] = st.session_state['avg_video_length_input']
+
+
 def update_encoding_tier():
     st.session_state['percent_baseline'] = st.session_state['percent_baseline_input']
 
@@ -250,8 +265,8 @@ def update_input_variables():
                         on_change=update_usage_volumes)
 
 
-def calculate_totals():
-    st.session_state.spend_data = calculate_spend()
+def calculate_totals(df):
+    st.session_state.spend_data = calculate_spend(df)
     spend_df = st.session_state.spend_data
     storage_spend = st.session_state.spend_data[(spend_df['sku_category'] == 'Storage')]['total_spend'].sum()
     encoding_spend = spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum()
@@ -301,7 +316,9 @@ def display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, tot
 
 # Main App Layout
 def home():
-    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals()
+    if st.button('Update Calculation'):
+        update_dataframe()
+    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
     with st.container(border=True):
         st.header("Volume Inputs")
         update_input_variables()
@@ -310,8 +327,10 @@ def home():
 
 
 def advanced():
+    if st.button('Update Calculation'):
+        update_dataframe()
     # Bring in calculated variables
-    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals()
+    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
     with st.container(border=True):
         st.header("Volume Inputs")
         update_input_variables()
@@ -371,13 +390,41 @@ def advanced():
                    total_spend_developer_plan, developer_plan_cost)
 
 
+def calculate_gb_volumes():
+    st.session_state.storage_volume = round(st.session_state.library_size_gb * 8 * 1024 / st.session_state.bandwidth_bitrate / 60)
+    st.session_state.streaming_volume = round(st.session_state.bandwidth_gb * 8 * 1024 / st.session_state.bandwidth_bitrate / 60)
+    st.session_state.encoding_volume = round(st.session_state.new_videos_per_month * st.session_state.avg_video_length)
+    st.session_state.live_encoding_volume = round(st.session_state.new_live_videos_per_month * st.session_state.avg_video_length)
+
+def super_advanced():
+    if st.button('Convert to volumes and updated spend calculation'):
+        calculate_gb_volumes()
+        update_dataframe()
+    st.header("I only know GBs")
+    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    with col1:
+        st.number_input("Monthly bandwidth in GB", value=st.session_state.bandwidth_gb, min_value=0, step=10, key="bandwidth_gb_input", on_change=update_gb_volumes)
+    with col2:
+        st.number_input("Avg. video bitrate (MBPS)", value=st.session_state.bandwidth_bitrate, min_value=0.0, max_value=10.0, step=0.1, key="bandwidth_bitrate_input", on_change=update_gb_volumes)
+    with col3:
+        st.number_input("Current library size in GB", value=st.session_state.library_size_gb, min_value=0, step=10, key="library_size_gb_input", on_change=update_gb_volumes)
+    with col4:
+        st.number_input("On-demand videos added per month", value=st.session_state.new_videos_per_month, min_value=0, step=10, key="new_videos_per_month_input", on_change=update_gb_volumes)
+    with col5:
+        st.number_input("Live videos added per month", value=st.session_state.new_live_videos_per_month, min_value=0, step=10, key="new_live_videos_per_month_input", on_change=update_gb_volumes)
+    with col6:
+        st.number_input("Avg. video length in minutes", value=st.session_state.avg_video_length, min_value=0.0, max_value=1000.0, step=0.1, key="avg_video_length_input", on_change=update_gb_volumes)
+    display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
+                   total_spend_developer_plan, developer_plan_cost)
+
 st.sidebar.title("Pages")
-selection = st.sidebar.radio("Go to", ["Basic Calculator", "Advanced Calculator"])
+selection = st.sidebar.radio("Go to", ["Basic Calculator (Minutes)", "Advanced Calculator (Minutes)", "Basic Calculator (GBs)"])
 
-if st.button('Update Calculation'):
-    update_dataframe()
 
-if selection == "Basic Calculator":
+if selection == "Basic Calculator (Minutes)":
     home()
-elif selection == "Advanced Calculator":
+elif selection == "Advanced Calculator (Minutes)":
     advanced()
+elif selection == "Basic Calculator (GBs)":
+    super_advanced()

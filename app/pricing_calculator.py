@@ -342,7 +342,7 @@ def button_layouts():
             if st.button('Update Totals'):
                 update_dataframe()
         with col2:
-            st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Enables Baseline Encoding Tier for all eligible assets")
+            st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Baseline assets are a cost-effective option for video applications that have simpler quality needs. Under this tier, encoding is free for videos up to 1080p in resolution.")
 # Main App Layout
 
 st.logo('images/Mux Logo Medium Charcoal.png', link="https://www.mux.com")

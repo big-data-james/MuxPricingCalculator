@@ -22,6 +22,21 @@ st.set_page_config(
 )
 st.markdown(custom_css, unsafe_allow_html=True)
 
+def save_to_url():
+    params = st.experimental_get_query_params()
+    for key, value in st.session_state.items():
+        params[key] = value
+    st.experimental_set_query_params(**params)
+
+# Function to load state from URL parameters
+def load_from_url():
+    params = st.experimental_get_query_params()
+    for key, value in params.items():
+        st.session_state[key] = value[0]
+
+# Load state from URL on app start
+if st.experimental_get_query_params():
+    load_from_url()
 
 @st.cache_data
 def load_pricing_csv():
@@ -341,6 +356,7 @@ def button_layouts():
         with col1:
             if st.button('Update Totals'):
                 update_dataframe()
+                save_to_url()
         with col2:
             st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Baseline assets are a cost-effective option for video applications that have simpler quality needs. Under this tier, encoding is free for videos up to 1080p in resolution.")
 # Main App Layout
@@ -449,6 +465,7 @@ def super_advanced():
             if st.button('Update Totals'):
                 calculate_gb_volumes()
                 update_dataframe()
+                save_to_url()
         with col2:
             st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Enables Baseline Encoding Tier for all eligible assets")
     with stylable_container(

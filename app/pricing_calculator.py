@@ -263,21 +263,21 @@ def update_resolution_mix():
 def update_input_variables():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.number_input("Input On Demand Minutes", min_value=0,
+        st.number_input("On Demand Minutes", min_value=0,
                         step=100, value=st.session_state.encoding_volume, key='encoding_volume_input',
                         on_change=update_usage_volumes)
     with col2:
-        st.number_input("Input Live Minutes", min_value=0,
+        st.number_input("Live Minutes", min_value=0,
                         step=100,
                         value=st.session_state.live_encoding_volume, key='live_encoding_volume_input',
                         on_change=update_usage_volumes)
     with col3:
-        st.number_input("Input Streaming Minutes", min_value=0,
+        st.number_input("Streaming Minutes", min_value=0,
                         step=1000,
                         value=st.session_state.streaming_volume, key='streaming_volume_input',
                         on_change=update_usage_volumes)
     with col4:
-        st.number_input("Input Storage Minutes", min_value=0, step=100,
+        st.number_input("Storage Minutes", min_value=0, step=100,
                         value=st.session_state.storage_volume, key='storage_volume_input',
                         on_change=update_usage_volumes)
 
@@ -362,7 +362,7 @@ def home():
             }
             """,
     ):
-        st.header("Usage")
+        st.header("Usage Inputs")
         update_input_variables()
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
@@ -382,7 +382,7 @@ def advanced():
             }
             """,
     ):
-        st.header("Usage")
+        st.header("Usage Inputs")
         update_input_variables()
     with st.container():
         st.header("Cold Storage Mix")
@@ -461,7 +461,7 @@ def super_advanced():
             }
             """,
     ):
-        st.header("CDN and Storage Usage")
+        st.header("CDN and Storage Usage Inputs")
         spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
 
         col1, col2, col3 = st.columns(3)

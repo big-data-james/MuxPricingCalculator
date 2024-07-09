@@ -1,7 +1,9 @@
 import streamlit as st
+import streamlit_extras
 import pandas as pd
 import os
-import math
+
+from streamlit_extras.stylable_container import stylable_container
 
 custom_css = """
 <style>
@@ -13,7 +15,11 @@ html, body, [class*="css"]  {
 </style>
 """
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Mux Pricing Calculator",
+    layout="wide",
+    initial_sidebar_state="auto",
+)
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
@@ -50,6 +56,7 @@ default_values = {
     'new_videos_per_month': 1000,
     'new_live_videos_per_month': 0,
     'avg_video_length': 5.0,
+    'baseline_toggle': False,
     'data': pd.DataFrame({
         'SKU Name': ['baseline_encoding_720p', 'live_encoding_720p', 'baseline_storage_720p', 'streaming_720p'],
         'Usage Value': [1000, 500, 6000, 20000]
@@ -90,9 +97,15 @@ def calculate_spend(df):
 
 def calculate_usage(resolution, source_sku, default_volume, default_resolution_mix, baseline_encoding, storage_type):
     if baseline_encoding == True:
-        baseline_multiplier = st.session_state.get("percent_baseline", default_values['percent_baseline']) / 100
+        if st.session_state.get("baseline_toggle", default_values['baseline_toggle']) == True:
+            baseline_multiplier = 1
+        else:
+            baseline_multiplier = 0
     elif baseline_encoding == False:
-        baseline_multiplier = (1 - st.session_state.get("percent_baseline", default_values['percent_baseline']) / 100)
+        if st.session_state.get("baseline_toggle", default_values['baseline_toggle']) == True:
+            baseline_multiplier = 0
+        else:
+            baseline_multiplier = 1
     else:
         baseline_multiplier = 1
     if storage_type == 'cold':
@@ -217,6 +230,10 @@ def update_usage_volumes():
     st.session_state['storage_volume'] = st.session_state['storage_volume_input']
 
 
+def update_baseline_toggle():
+    st.session_state['baseline_toggle'] = st.session_state['baseline_toggle_input']
+    update_dataframe()
+
 def update_gb_volumes():
     st.session_state['bandwidth_gb'] = st.session_state['bandwidth_gb_input']
     st.session_state['bandwidth_bitrate'] = st.session_state['bandwidth_bitrate_input']
@@ -246,21 +263,21 @@ def update_resolution_mix():
 def update_input_variables():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.number_input("Input: Monthly VOD Encoding Minutes", min_value=0,
+        st.number_input("Input On Demand Minutes", min_value=0,
                         step=100, value=st.session_state.encoding_volume, key='encoding_volume_input',
                         on_change=update_usage_volumes)
     with col2:
-        st.number_input("Input: Monthly Live Encoding Minutes", min_value=0,
+        st.number_input("Input Live Minutes", min_value=0,
                         step=100,
                         value=st.session_state.live_encoding_volume, key='live_encoding_volume_input',
                         on_change=update_usage_volumes)
     with col3:
-        st.number_input("Input: Monthly Streaming Minutes", min_value=0,
+        st.number_input("Input Streaming Minutes", min_value=0,
                         step=1000,
                         value=st.session_state.streaming_volume, key='streaming_volume_input',
                         on_change=update_usage_volumes)
     with col4:
-        st.number_input("Input Monthly Storage Minutes", min_value=0, step=100,
+        st.number_input("Input Storage Minutes", min_value=0, step=100,
                         value=st.session_state.storage_volume, key='storage_volume_input',
                         on_change=update_usage_volumes)
 
@@ -272,8 +289,8 @@ def calculate_totals(df):
     encoding_spend = spend_df[(spend_df['sku_category'] == 'Encoding')]['total_spend'].sum()
     streaming_spend = spend_df[(spend_df['sku_category'] == 'Streaming')]['total_spend'].sum()
     total_spend = spend_df['total_spend'].sum() - 100
-    total_spend_developer_plan = max(total_spend, 5)
-    developer_plan_cost = 5
+    total_spend_developer_plan = max(total_spend, 10)
+    developer_plan_cost = 10
     mux_credits = max(-100, -1 * (storage_spend + encoding_spend + streaming_spend))
     return spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost
 
@@ -281,8 +298,13 @@ def calculate_totals(df):
 def display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost):
     with st.container(border=True):
-        st.header("Total Spend with Mux Starter Plan ($5)")
-        st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
+        st.header("Total Spend with Mux Starter Plan ($10/month)")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
+        with col2:
+            st.metric('Total Annual Spend', format_spend(total_spend_developer_plan * 12))
+        st.write("Estimates include volume-based discounts; assumes",  st.session_state.resolution_mix_720p, "% of videos and delivery at 720p resolution and ", st.session_state.cold_percent, "% of videos in cold storage; values can be updated in Advanced Calculator.")
     with st.container(border=True):
         st.header("Monthly Spend by SKU Category")
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -313,32 +335,55 @@ def display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, tot
                          )
                      })
 
-
-# Main App Layout
-def home():
-    if st.button('Update Calculation'):
-        update_dataframe()
-    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
+def button_layouts():
     with st.container(border=True):
-        st.header("Volume Inputs")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            if st.button('Update Totals'):
+                update_dataframe()
+        with col2:
+            st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Enables Baseline Encoding Tier for all eligible assets")
+# Main App Layout
+
+st.logo('images/Mux Logo Medium Charcoal.png', link="https://www.mux.com")
+
+
+def home():
+    update_dataframe()
+    button_layouts()
+    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
+    with stylable_container(
+      key="container_with_background",
+      css_styles="""
+            {
+                border: 3px solid #ffcccc; /* light pink border */
+                background-color: #fff7fcff; /* light pink background */
+                padding: 20px; /* adjust padding as needed */
+            }
+            """,
+    ):
+        st.header("Usage")
         update_input_variables()
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
 
 
 def advanced():
-    if st.button('Update Calculation'):
-        update_dataframe()
+    button_layouts()
     # Bring in calculated variables
     spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
-    with st.container(border=True):
-        st.header("Volume Inputs")
+    with stylable_container(
+            key="container_with_background",
+            css_styles="""
+            {
+                border: 3px solid #ffcccc; /* light pink border */
+                background-color: #fff7fcff; /* light pink background */
+                padding: 20px; /* adjust padding as needed */
+            }
+            """,
+    ):
+        st.header("Usage")
         update_input_variables()
-    with st.container():
-        st.header("Asset Encoding Mix")
-        st.slider("Percent Baseline Encoding", min_value=0, max_value=100,
-                  value=st.session_state.percent_baseline, step=10,
-                  format="%d%%", key='percent_baseline_input', on_change=update_encoding_tier)
     with st.container():
         st.header("Cold Storage Mix")
         col1, col2, col3 = st.columns(3)
@@ -393,28 +438,39 @@ def advanced():
 def calculate_gb_volumes():
     st.session_state.storage_volume = round(st.session_state.library_size_gb * 8 * 1024 / st.session_state.bandwidth_bitrate / 60)
     st.session_state.streaming_volume = round(st.session_state.bandwidth_gb * 8 * 1024 / st.session_state.bandwidth_bitrate / 60)
-    st.session_state.encoding_volume = round(st.session_state.new_videos_per_month * st.session_state.avg_video_length)
-    st.session_state.live_encoding_volume = round(st.session_state.new_live_videos_per_month * st.session_state.avg_video_length)
+    # Zero out encoding volumes
+    st.session_state.encoding_volume = 0
+    st.session_state.live_encoding_volume = 0
 
 def super_advanced():
-    if st.button('Convert to volumes and updated spend calculation'):
-        calculate_gb_volumes()
-        update_dataframe()
-    st.header("Input CDN and Storage GB Volumes")
-    spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
-    with col1:
-        st.number_input("Monthly bandwidth in GB", value=st.session_state.bandwidth_gb, min_value=0, step=10, key="bandwidth_gb_input", on_change=update_gb_volumes)
-    with col2:
-        st.number_input("Avg. video bitrate (MBPS)", value=st.session_state.bandwidth_bitrate, min_value=0.0, max_value=10.0, step=0.1, key="bandwidth_bitrate_input", on_change=update_gb_volumes)
-    with col3:
-        st.number_input("Current library size in GB", value=st.session_state.library_size_gb, min_value=0, step=10, key="library_size_gb_input", on_change=update_gb_volumes)
-    with col4:
-        st.number_input("On-demand videos added per month", value=st.session_state.new_videos_per_month, min_value=0, step=10, key="new_videos_per_month_input", on_change=update_gb_volumes)
-    with col5:
-        st.number_input("Live videos added per month", value=st.session_state.new_live_videos_per_month, min_value=0, step=10, key="new_live_videos_per_month_input", on_change=update_gb_volumes)
-    with col6:
-        st.number_input("Avg. video length in minutes", value=st.session_state.avg_video_length, min_value=0.0, max_value=1000.0, step=0.1, key="avg_video_length_input", on_change=update_gb_volumes)
+    with st.container(border=True):
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            if st.button('Update Totals'):
+                calculate_gb_volumes()
+                update_dataframe()
+        with col2:
+            st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Enables Baseline Encoding Tier for all eligible assets")
+    with stylable_container(
+      key="container_with_background",
+      css_styles="""
+            {
+                border: 3px solid #ffcccc; /* light pink border */
+                background-color: #fff7fcff; /* light pink background */
+                padding: 20px; /* adjust padding as needed */
+            }
+            """,
+    ):
+        st.header("CDN and Storage Usage")
+        spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.number_input("Monthly bandwidth in GB", value=st.session_state.bandwidth_gb, min_value=0, step=10, key="bandwidth_gb_input", on_change=update_gb_volumes)
+        with col2:
+            st.number_input("Avg. video bitrate (MBPS)", value=st.session_state.bandwidth_bitrate, min_value=0.0, max_value=10.0, step=0.1, key="bandwidth_bitrate_input", on_change=update_gb_volumes)
+        with col3:
+            st.number_input("Current library size in GB", value=st.session_state.library_size_gb, min_value=0, step=10, key="library_size_gb_input", on_change=update_gb_volumes)
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
 

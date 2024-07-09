@@ -22,21 +22,38 @@ st.set_page_config(
 )
 st.markdown(custom_css, unsafe_allow_html=True)
 
+
 def save_to_url():
-    params = st.experimental_get_query_params()
+    params = st.query_params
     for key, value in st.session_state.items():
         params[key] = value
-    st.experimental_set_query_params(**params)
+    st.query_params.update(params)
+
 
 # Function to load state from URL parameters
 def load_from_url():
-    params = st.experimental_get_query_params()
+    params = st.query_params
     for key, value in params.items():
-        st.session_state[key] = value[0]
+        # Handle boolean values
+        if value.lower() == 'true' or value.lower() == 'false':
+            st.session_state[key] = value.lower() == 'true'
+        # Handle numeric values
+        elif '.' in value:
+            try:
+                st.session_state[key] = float(value)
+            except ValueError:
+                st.session_state[key] = value
+        else:
+            try:
+                st.session_state[key] = int(value)
+            except ValueError:
+                st.session_state[key] = value
+
 
 # Load state from URL on app start
-if st.experimental_get_query_params():
+if st.query_params:
     load_from_url()
+
 
 @st.cache_data
 def load_pricing_csv():
@@ -46,6 +63,7 @@ def load_pricing_csv():
     # Load the CSV file into a DataFrame
     df = pd.read_csv(file_path)
     return df
+
 
 
 pricing_tiers = load_pricing_csv()
@@ -68,9 +86,6 @@ default_values = {
     'bandwidth_gb': 100,
     'bandwidth_bitrate': 3.5,
     'library_size_gb': 100,
-    'new_videos_per_month': 1000,
-    'new_live_videos_per_month': 0,
-    'avg_video_length': 5.0,
     'baseline_toggle': False,
     'data': pd.DataFrame({
         'SKU Name': ['baseline_encoding_720p', 'live_encoding_720p', 'baseline_storage_720p', 'streaming_720p'],
@@ -243,29 +258,31 @@ def update_usage_volumes():
     st.session_state['live_encoding_volume'] = st.session_state['live_encoding_volume_input']
     st.session_state['streaming_volume'] = st.session_state['streaming_volume_input']
     st.session_state['storage_volume'] = st.session_state['storage_volume_input']
+    st.query_params.clear()
 
 
 def update_baseline_toggle():
     st.session_state['baseline_toggle'] = st.session_state['baseline_toggle_input']
     update_dataframe()
+    st.query_params.clear()
 
 def update_gb_volumes():
     st.session_state['bandwidth_gb'] = st.session_state['bandwidth_gb_input']
     st.session_state['bandwidth_bitrate'] = st.session_state['bandwidth_bitrate_input']
     st.session_state['library_size_gb'] = st.session_state['library_size_gb_input']
-    st.session_state['new_videos_per_month'] = st.session_state['new_videos_per_month_input']
-    st.session_state['new_live_videos_per_month'] = st.session_state['new_live_videos_per_month_input']
-    st.session_state['avg_video_length'] = st.session_state['avg_video_length_input']
+    st.query_params.clear()
 
 
 def update_encoding_tier():
     st.session_state['percent_baseline'] = st.session_state['percent_baseline_input']
+    st.query_params.clear()
 
 
 def update_storage_lifecycle():
     st.session_state['cold_percent'] = st.session_state['cold_percent_input']
     st.session_state['infrequent_percent'] = st.session_state['infrequent_percent_input']
     st.session_state['hot_percent'] = st.session_state['hot_percent_input']
+    st.query_params.clear()
 
 
 def update_resolution_mix():
@@ -273,6 +290,7 @@ def update_resolution_mix():
     st.session_state['resolution_mix_1080p'] = st.session_state['resolution_mix_1080p_input']
     st.session_state['resolution_mix_1440p'] = st.session_state['resolution_mix_1440p_input']
     st.session_state['resolution_mix_2160p'] = st.session_state['resolution_mix_2160p_input']
+    st.query_params.clear()
 
 
 def update_input_variables():
@@ -356,15 +374,16 @@ def button_layouts():
         with col1:
             if st.button('Update Totals'):
                 update_dataframe()
-                save_to_url()
         with col2:
             st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Baseline assets are a cost-effective option for video applications that have simpler quality needs. Under this tier, encoding is free for videos up to 1080p in resolution.")
-# Main App Layout
 
+
+# Main App Layout
 st.logo('images/Mux Logo Medium Charcoal.png', link="https://www.mux.com")
 
 
 def home():
+    st.query_params.clear()
     update_dataframe()
     button_layouts()
     spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
@@ -382,9 +401,14 @@ def home():
         update_input_variables()
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
+    if st.button('Share URL'):
+        st.query_params.clear()
+        save_to_url()
 
 
 def advanced():
+    st.query_params.clear()
+    update_dataframe()
     button_layouts()
     # Bring in calculated variables
     spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
@@ -449,6 +473,9 @@ def advanced():
     # Bring in Totals from main logic above
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
+    if st.button('Share URL'):
+        st.query_params.clear()
+        save_to_url()
 
 
 def calculate_gb_volumes():
@@ -459,13 +486,14 @@ def calculate_gb_volumes():
     st.session_state.live_encoding_volume = 0
 
 def super_advanced():
+    st.query_params.clear()
+    update_dataframe()
     with st.container(border=True):
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             if st.button('Update Totals'):
                 calculate_gb_volumes()
                 update_dataframe()
-                save_to_url()
         with col2:
             st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Enables Baseline Encoding Tier for all eligible assets")
     with stylable_container(
@@ -490,9 +518,13 @@ def super_advanced():
             st.number_input("Current library size in GB", value=st.session_state.library_size_gb, min_value=0, step=10, key="library_size_gb_input", on_change=update_gb_volumes)
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
+    if st.button('Share URL'):
+        st.query_params.clear()
+        save_to_url()
 
 st.sidebar.title("Pages")
 selection = st.sidebar.radio("Go to", ["Basic Calculator (Minutes)", "Advanced Calculator (Minutes)", "Basic Calculator (GBs)"])
+st.empty()
 
 
 if selection == "Basic Calculator (Minutes)":

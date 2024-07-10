@@ -258,6 +258,7 @@ def update_usage_volumes():
     st.session_state['live_encoding_volume'] = st.session_state['live_encoding_volume_input']
     st.session_state['streaming_volume'] = st.session_state['streaming_volume_input']
     st.session_state['storage_volume'] = st.session_state['storage_volume_input']
+    update_dataframe()
     st.query_params.clear()
 
 
@@ -270,6 +271,8 @@ def update_gb_volumes():
     st.session_state['bandwidth_gb'] = st.session_state['bandwidth_gb_input']
     st.session_state['bandwidth_bitrate'] = st.session_state['bandwidth_bitrate_input']
     st.session_state['library_size_gb'] = st.session_state['library_size_gb_input']
+    calculate_gb_volumes()
+    update_dataframe()
     st.query_params.clear()
 
 
@@ -282,6 +285,7 @@ def update_storage_lifecycle():
     st.session_state['cold_percent'] = st.session_state['cold_percent_input']
     st.session_state['infrequent_percent'] = st.session_state['infrequent_percent_input']
     st.session_state['hot_percent'] = st.session_state['hot_percent_input']
+    update_dataframe()
     st.query_params.clear()
 
 
@@ -290,27 +294,28 @@ def update_resolution_mix():
     st.session_state['resolution_mix_1080p'] = st.session_state['resolution_mix_1080p_input']
     st.session_state['resolution_mix_1440p'] = st.session_state['resolution_mix_1440p_input']
     st.session_state['resolution_mix_2160p'] = st.session_state['resolution_mix_2160p_input']
+    update_dataframe()
     st.query_params.clear()
 
 
 def update_input_variables():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.number_input("On Demand Minutes", min_value=0,
+        st.number_input("On demand minutes", min_value=0,
                         step=100, value=st.session_state.encoding_volume, key='encoding_volume_input',
                         on_change=update_usage_volumes)
     with col2:
-        st.number_input("Live Minutes", min_value=0,
+        st.number_input("Live minutes", min_value=0,
                         step=100,
                         value=st.session_state.live_encoding_volume, key='live_encoding_volume_input',
                         on_change=update_usage_volumes)
     with col3:
-        st.number_input("Streaming Minutes", min_value=0,
+        st.number_input("Streaming minutes", min_value=0,
                         step=1000,
                         value=st.session_state.streaming_volume, key='streaming_volume_input',
                         on_change=update_usage_volumes)
     with col4:
-        st.number_input("Storage Minutes", min_value=0, step=100,
+        st.number_input("Storage minutes", min_value=0, step=100,
                         value=st.session_state.storage_volume, key='storage_volume_input',
                         on_change=update_usage_volumes)
 
@@ -331,50 +336,54 @@ def calculate_totals(df):
 def display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost):
     with st.container(border=True):
-        st.header("Total Spend with Mux Starter Plan ($10/month)")
+        st.header("Total spend with Mux Starter Plan ($10/month)")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric('Total Monthly Spend', format_spend(total_spend_developer_plan))
+            st.metric('Total monthly spend', format_spend(total_spend_developer_plan))
         with col2:
-            st.metric('Total Annual Spend', format_spend(total_spend_developer_plan * 12))
+            st.metric('Total annual spend', format_spend(total_spend_developer_plan * 12))
         st.write("Estimates include volume-based discounts; assumes",  st.session_state.resolution_mix_720p, "% of videos and delivery at 720p resolution and ", st.session_state.cold_percent, "% of videos in cold storage; values can be updated in Advanced Calculator.")
     with st.container(border=True):
-        st.header("Monthly Spend by SKU Category")
+        st.header("Monthly spend by SKU category")
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric('Monthly Streaming Spend', format_spend(streaming_spend))
+            st.metric('Monthly streaming spend', format_spend(streaming_spend))
         with col2:
-            st.metric('Monthly Encoding Spend', format_spend(encoding_spend))
+            st.metric('Monthly encoding spend', format_spend(encoding_spend))
         with col3:
-            st.metric('Monthly Storage Spend', format_spend(storage_spend))
+            st.metric('Monthly storage spend', format_spend(storage_spend))
         with col4:
-            st.metric('Monthly Starter Plan Cost', format_spend(developer_plan_cost))
+            st.metric('Monthly Starter Plan cost', format_spend(developer_plan_cost))
         with col5:
             st.metric('Mux Credits (inc. w/ Starter Plan)', format_spend(mux_credits))
     with st.container(border=True):
-        st.header("Spend Details (excludes Starter Plan credits)")
-        st.dataframe(spend_df,
+        st.header("Spend details (excludes Starter Plan credits)")
+        filtered_spend_df = spend_df[spend_df['usage'] != 0]
+        filtered_spend_df = filtered_spend_df.style.format(
+            {
+                "usage": lambda x: '{:,.0f}'.format(x),
+                "total_spend": lambda x : '${:,.0f}'.format(x),
+                "effective_rate": lambda x: '${:,.4f}'.format(x)
+            }
+        )
+        st.dataframe(filtered_spend_df,
+                     hide_index=True,
                      column_config={
-                         'sku_category': 'SKU Category',
-                         'sku': 'SKU Name',
-                         'usage': 'Monthly Usage',
+                         'sku_category': 'SKU category',
+                         'sku': 'SKU name',
+                         'usage': 'Monthly usage',
                          'effective_rate': st.column_config.NumberColumn(
-                             label='Effective Rate',
-                             format="$%.4f"
+                             label='Effective rate'
                          ),
                          'total_spend': st.column_config.NumberColumn(
-                             label='Monthly Spend',
-                             format="$%d"
+                             label='Monthly spend'
                          )
                      })
 
 def button_layouts():
-    with st.container(border=True):
+    with st.container(border=False):
         col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            if st.button('Update Totals'):
-                update_dataframe()
-        with col2:
+        with col4:
             st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Baseline assets are a cost-effective option for video applications that have simpler quality needs. Under this tier, encoding is free for videos up to 1080p in resolution.")
 
 
@@ -397,7 +406,7 @@ def home():
             }
             """,
     ):
-        st.header("Usage Inputs")
+        st.header("Usage per month")
         update_input_variables()
     display_totals(spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits,
                    total_spend_developer_plan, developer_plan_cost)
@@ -422,22 +431,22 @@ def advanced():
             }
             """,
     ):
-        st.header("Usage Inputs")
+        st.header("Usage per month")
         update_input_variables()
     with st.container():
-        st.header("Cold Storage Mix")
+        st.header("Cold storage mix")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.number_input("Percent Cold", min_value=0, max_value=100, step=10,
+            st.number_input("Percent cold", min_value=0, max_value=100, step=10,
                             value=st.session_state.cold_percent, key='cold_percent_input',
                             on_change=update_storage_lifecycle)
         with col2:
-            st.number_input("Percent Infrequent", min_value=0, max_value=100,
+            st.number_input("Percent infrequent", min_value=0, max_value=100,
                             step=10,
                             value=st.session_state.infrequent_percent, key='infrequent_percent_input',
                             on_change=update_storage_lifecycle)
         with col3:
-            st.number_input("Percent Hot", min_value=0, max_value=100, step=10,
+            st.number_input("Percent hot", min_value=0, max_value=100, step=10,
                             value=st.session_state.hot_percent, key='hot_percent_input',
                             on_change=update_storage_lifecycle)
     if st.session_state.get("cold_percent", 60) + st.session_state.get("infrequent_percent", 10) + st.session_state.get(
@@ -484,17 +493,14 @@ def calculate_gb_volumes():
     # Zero out encoding volumes
     st.session_state.encoding_volume = 0
     st.session_state.live_encoding_volume = 0
+    update_dataframe()
 
 def super_advanced():
     st.query_params.clear()
     update_dataframe()
-    with st.container(border=True):
+    with st.container(border=False):
         col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            if st.button('Update Totals'):
-                calculate_gb_volumes()
-                update_dataframe()
-        with col2:
+        with col4:
             st.session_state.baseline_toggle = st.toggle("Use baseline encoding tier", value=False, on_change=update_baseline_toggle, key='baseline_toggle_input', help="Enables Baseline Encoding Tier for all eligible assets")
     with stylable_container(
       key="container_with_background",
@@ -506,7 +512,7 @@ def super_advanced():
             }
             """,
     ):
-        st.header("CDN and Storage Usage Inputs")
+        st.header("CDN and storage usage per month")
         spend_df, storage_spend, encoding_spend, streaming_spend, total_spend, mux_credits, total_spend_developer_plan, developer_plan_cost = calculate_totals(st.session_state.data)
 
         col1, col2, col3 = st.columns(3)
